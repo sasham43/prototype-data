@@ -12,20 +12,19 @@ fs.readdir(collection_path, function(err, items){
 
     // console.log('items:', items);
     items.forEach(function(folder){
-        fs.readdir(collection_path + '/' + folder, function(err, pieces){
-            // console.log('pieces:', pieces);
-            pieces.forEach(function(piece){
-                var data = fs.readFileSync(collection_path + '/' + folder + '/' + piece, 'utf-8');
-                try {
-                    var parsed = JSON.parse(data);
-                    works.push(parsed);
-                } catch (e){
-                    console.log('could not parse', data)
-                }
-                // works.push(JSON.parse(data));
-            });
+        var pieces = fs.readdirSync(collection_path + '/' + folder);
 
-            console.log('works', works.length);
+        pieces.forEach(function(piece){
+            var data = fs.readFileSync(collection_path + '/' + folder + '/' + piece, 'utf-8');
+            try {
+                var parsed = JSON.parse(data);
+                works.push(parsed);
+            } catch (e){
+                console.log('could not parse', data)
+            }
         });
     });
+
+
+    console.log('works', works.length);
 });
