@@ -1,6 +1,7 @@
 require('dotenv').config();
 
 var q = require('q');
+var request = require('request');
 
 var playlists = [
     {
@@ -18,6 +19,13 @@ var playlists = [
 ];
 var track_ids = [];
 var all_tracks = [];
+var audio_features = [];
+var all_data = [];
+
+var last_fm_key = process.env.LAST_FM_KEY;
+
+// const LastFM = require('last-fm')
+// const lastfm = new LastFM(process.env.LAST_FM_KEY, { userAgent: 'MyApp/1.0.0 (http://example.com)' })
 
 var SpotifyWebApi = require('spotify-web-api-node');
 
@@ -43,19 +51,6 @@ spotifyApi.clientCredentialsGrant()
 
     playlists.forEach(function(p){
         calls.push(spotifyApi.getPlaylistTracks(p.user, p.playlist));
-        // spotifyApi.getPlaylistTracks(p.user, p.playlist)
-        // .then(function(response){
-        //     // console.log('response:', response);
-        //     // all_tracks.push(response);
-        //     response.body.items.forEach(function(t){
-        //         console.log('t', t);
-        //         all_tracks.push(t);
-        //     })
-        //     console.log('length', all_tracks.length)
-        // })
-        // .catch(function(err){
-        //     console.log('fail', err);
-        // });
     });
 
     q.all(calls).then(function(response){
@@ -72,7 +67,57 @@ spotifyApi.clientCredentialsGrant()
 
         spotifyApi.getAudioFeaturesForTracks(track_ids)
         .then(function(response){
-            console.log('response:', response.body);
+            // console.log('response:', response.body);
+            audio_features = response.body.audio_features;
+            // console.log('audio features:', audio_features.length, all_tracks.length)
+
+            var last_calls = [];
+
+            // get last fm tags
+            all_tracks.forEach(function(a){
+                // var options = {
+                //     name: a.track.name,
+                //     artistName: a.track.artists[0].name
+                // };
+                // console.log('last tracks', options);
+
+                var artist_name = encodeURI(a.track.artists[0].name);
+                var track_name = encodeURI(a.track.name)
+
+                // console.log('asking for', artist_name, track_name)
+
+                // last_calls.push(q.ninvoke(lastfm, 'trackTopTags', options))
+                var endpoint = `http://ws.audioscrobbler.com/2.0/?method=track.gettoptags&artist=${artist_name}&track=${track_name}&api_key=${last_fm_key}&format=json`;
+
+                last_calls.push(q.ninvoke(request, 'get', endpoint, {json:true}))
+                // lastfm.trackTopTags(options, function(err, data){
+                //     if(err){
+                //         console.log('last err', err);
+                //     } else {
+                //         a.tags = data.tags;
+                //         all_data.push(a);
+                //     }
+                // });
+            });
+
+            q.all(last_calls).then(function(response){
+                // console.log('tags', response, last_calls.length);
+                // console.log('tags', response.body.top_tags)
+                // var data = JSON.parse(response.body);
+                // var tags = data.top_tags;
+                // console.log('tags', tags);
+                // console.log('response.body', response)
+                response.forEach(function(r){
+                    console.log('r', r[1])
+                    var tags = r[1].top_tags.tag;
+                    // var data = JSON.parse(r.body);
+                    // var tags = data.top_tags;
+                    // console.log('tags', tags);
+                })
+            })
+            .catch(function(err){
+                console.log('you have failed me for the last time', err, last_calls.length);
+            })
         })
         .catch(function(err){
             console.log('failed again', err);
