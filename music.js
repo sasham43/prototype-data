@@ -2,6 +2,7 @@ require('dotenv').config();
 
 var q = require('q');
 var request = require('request');
+var _ = require('underscore');
 
 var playlists = [
     {
@@ -19,8 +20,9 @@ var playlists = [
 ];
 var track_ids = [];
 var all_tracks = [];
-var audio_features = [];
+var all_features = [];
 var all_data = [];
+var all_tags = [];
 
 var last_fm_key = process.env.LAST_FM_KEY;
 
@@ -68,51 +70,55 @@ spotifyApi.clientCredentialsGrant()
         spotifyApi.getAudioFeaturesForTracks(track_ids)
         .then(function(response){
             // console.log('response:', response.body);
-            audio_features = response.body.audio_features;
+            all_features = response.body.audio_features;
             // console.log('audio features:', audio_features.length, all_tracks.length)
 
             var last_calls = [];
 
             // get last fm tags
             all_tracks.forEach(function(a){
-                // var options = {
-                //     name: a.track.name,
-                //     artistName: a.track.artists[0].name
-                // };
-                // console.log('last tracks', options);
-
                 var artist_name = encodeURI(a.track.artists[0].name);
-                var track_name = encodeURI(a.track.name)
-
-                // console.log('asking for', artist_name, track_name)
-
-                // last_calls.push(q.ninvoke(lastfm, 'trackTopTags', options))
+                var track_name = encodeURI(a.track.name);
                 var endpoint = `http://ws.audioscrobbler.com/2.0/?method=track.gettoptags&artist=${artist_name}&track=${track_name}&api_key=${last_fm_key}&format=json`;
 
                 last_calls.push(q.ninvoke(request, 'get', endpoint, {json:true}))
-                // lastfm.trackTopTags(options, function(err, data){
-                //     if(err){
-                //         console.log('last err', err);
-                //     } else {
-                //         a.tags = data.tags;
-                //         all_data.push(a);
-                //     }
-                // });
             });
 
             q.all(last_calls).then(function(response){
-                // console.log('tags', response, last_calls.length);
-                // console.log('tags', response.body.top_tags)
-                // var data = JSON.parse(response.body);
-                // var tags = data.top_tags;
-                // console.log('tags', tags);
-                // console.log('response.body', response)
                 response.forEach(function(r){
                     console.log('r', r[1])
-                    var tags = r[1].top_tags.tag;
-                    // var data = JSON.parse(r.body);
-                    // var tags = data.top_tags;
-                    // console.log('tags', tags);
+                    var tags = r[1].toptags;
+                    all_tags.push(tags);
+                });
+
+                console.log(all_tags.length);
+
+                // match objects
+                all_tracks.forEach(function(a){
+                    var new_obj = {};
+
+                    var tags = _.find(all_tags, function(t){
+                        console.log('t', t)
+                        if(t){
+                            return t['@attr'].track == a.track.name;
+                        }
+                    });
+
+                    var features = _.find(all_features, function(f){
+                        return f.id == a.track.id;
+                    });
+
+                    new_obj.tags = tags ? tags.tag.map(function(t){ return t.name }) : [];
+                    new_obj.features = features ?  features : [];
+                    new_obj.artist_name = a.track.artists[0].name;
+                    new_obj.track_name = a.track.name;
+                    all_data.push(new_obj);
+                });
+
+                all_data.forEach(function(d, i){
+                    if(i < 10){
+                        console.log(d)
+                    }
                 })
             })
             .catch(function(err){
