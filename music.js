@@ -3,6 +3,8 @@ require('dotenv').config();
 var q = require('q');
 var request = require('request');
 var _ = require('underscore');
+var json2csv = require('json2csv')
+var fs = require('graceful-fs')
 
 var playlists = [
     {
@@ -119,6 +121,19 @@ spotifyApi.clientCredentialsGrant()
                     if(i < 10){
                         console.log(d)
                     }
+                });
+
+                try {
+                    var result = json2csv({data: all_data})
+                } catch(e){
+                    console.log(e);
+                }
+
+                fs.writeFile('music.csv', result, function(err, response){
+                    if(err)
+                        console.log('write err', err);
+
+                    console.log('file written');
                 })
             })
             .catch(function(err){
