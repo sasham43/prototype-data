@@ -10,6 +10,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "graceful-fs": "^4.1.11"
+    "graceful-fs": "^4.1.11",
+    "json2csv": "^3.11.5"
   }
 }
