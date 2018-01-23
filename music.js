@@ -24,15 +24,41 @@ var playlists = [
 
 var all_tracks = [];
 
-playlists.forEach(function(p){
-    var endpoint = `https://api/spotify.com/v1/users/${p.user}/playlists/${p.playlist}/tracks`;
-    console.log('endpoint:', endpoint);
-    spotify.request(endpoint)
-    .then(function(response){
-        console.log('response:', response);
+var SpotifyWebApi = require('spotify-web-api-node');
 
-        all_tracks.push(response);
-    }).catch(function(err){
-        console.log('fail', err);
-    });
+// credentials are optional
+// var spotifyApi = new SpotifyWebApi();
+console.log(process.env.SPOTIFY_ID,process.env.SPOTIFY_SECRET)
+var spotifyApi = new SpotifyWebApi({
+  clientId : process.env.SPOTIFY_ID,
+  clientSecret : process.env.SPOTIFY_SECRET,
+  redirectUri : 'http://www.example.com/callback'
 });
+
+// console.log('spotify', spotifyApi);
+spotifyApi.clientCredentialsGrant()
+  .then(function(data) {
+    console.log('The access token expires in ' + data.body['expires_in']);
+    console.log('The access token is ' + data.body['access_token']);
+
+    // Save the access token so that it's used in future calls
+    spotifyApi.setAccessToken(data.body['access_token']);
+
+    playlists.forEach(function(p){
+        spotifyApi.getPlaylistTracks(p.user, p.playlist)
+        .then(function(response){
+            // console.log('response:', response);
+            // all_tracks.push(response);
+            response.body.items.forEach(function(t){
+                console.log('t', t);
+                all_tracks.push(t);
+            })
+            console.log('length', all_tracks.length)
+        })
+        .catch(function(err){
+            console.log('fail', err);
+        });
+    });
+  }, function(err) {
+        console.log('Something went wrong when retrieving an access token', err);
+  });
